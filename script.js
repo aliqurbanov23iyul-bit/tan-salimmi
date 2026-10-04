@@ -90,3 +90,10 @@ hatunAudio.addEventListener('timeupdate',()=>{hatunSeek.value=hatunAudio.current
 hatunSeek.addEventListener('input',()=>{hatunAudio.currentTime=Number(hatunSeek.value)});
 $('#melody').addEventListener('click',()=>{if(!hatunAudio.paused)hatunAudio.pause()});
 document.addEventListener('visibilitychange',()=>{if(document.hidden)hatunAudio.pause()});
+
+const kittyLines={
+ wave:['Salam! Səni burada görmək gözəldir ♡','Əli dedi: “Sizdən çox xoşum gəldi.” Mən də salamı gətirdim!','Bir salam, bir təbəssüm… söhbət belə başlayır.'],
+ heart:['Əli bir az həyəcanlıdır. Mən ürəyi gətirdim!','Bu ürək də, çiçəklər də sizin üçün ♡','Sizi daha yaxından tanımaq istərdi. Mən sadəcə xəbərçiyəm.'],
+ music:['Duman açılıbsa, mən artıq rəqs edirəm ♫','Hatun, Valse… hansına birlikdə qulaq asaq?','Mahnını seç, mən ritm tutum, siz söhbət edin ♫']
+};
+document.querySelectorAll('.kitty-friend').forEach(button=>{let line=0,cheerTimer;button.addEventListener('click',()=>{const lines=kittyLines[button.dataset.kitty];line=(line+1)%lines.length;button.querySelector('.kitty-dialogue').textContent=lines[line];button.classList.remove('cheer');void button.offsetWidth;button.classList.add('cheer');clearTimeout(cheerTimer);cheerTimer=setTimeout(()=>button.classList.remove('cheer'),800)})});
