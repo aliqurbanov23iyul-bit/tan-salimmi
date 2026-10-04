@@ -2,8 +2,28 @@
 const $=s=>document.querySelector(s);let toastTimer;
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3500)}
 document.querySelectorAll('.fact').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('flipped');b.setAttribute('aria-expanded',b.classList.contains('flipped'))}));
-let audio;function note(f){try{audio??=new (window.AudioContext||window.webkitAudioContext)();audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type='triangle';o.frequency.value=f;g.gain.setValueAtTime(0,audio.currentTime);g.gain.linearRampToValueAtTime(.16,audio.currentTime+.015);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.8);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+.85);return true}catch(e){toast('Bu brauzerdə səs açıla bilmədi.');return false}}
-const keys=[...document.querySelectorAll('[data-note]')];function play(k){note(Number(k.dataset.note));k.classList.add('active');setTimeout(()=>k.classList.remove('active'),220)}keys.forEach(k=>k.addEventListener('click',()=>play(k)));$('#melody').addEventListener('click',()=>{const player=$('#loversPlayer');if(!player.firstChild){const frame=document.createElement('iframe');frame.src='https://www.youtube-nocookie.com/embed/mP8bpYjMUqk?autoplay=1';frame.title='TV Girl — Lovers Rock piano cover';frame.allow='autoplay; encrypted-media; picture-in-picture';frame.allowFullscreen=true;player.append(frame);const link=document.createElement('a');link.href='https://www.youtube.com/watch?v=mP8bpYjMUqk';link.textContent='Video açılmırsa, YouTube-da dinlə ↗';link.target='_blank';link.rel='noopener noreferrer';player.append(link)}player.hidden=false;$('#pianoStatus').textContent='Lovers Rock · piano cover. Lazım olsa videodakı Play düyməsinə bas.';player.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'})});
+let audio;const voices=new Set();
+function getAudio(){audio??=new (window.AudioContext||window.webkitAudioContext)();return audio}
+function pianoTone(f,when,duration=.8,volume=.15){const ctx=getAudio();const gain=ctx.createGain();gain.gain.setValueAtTime(.0001,when);gain.gain.exponentialRampToValueAtTime(volume,when+.008);gain.gain.exponentialRampToValueAtTime(volume*.25,when+.18);gain.gain.exponentialRampToValueAtTime(.0001,when+duration);gain.connect(ctx.destination);
+ [1,2,3].forEach((harmonic,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f*harmonic;g.gain.value=[1,.24,.07][i];o.connect(g);g.connect(gain);o.start(when);o.stop(when+duration+.02);voices.add(o);o.onended=()=>{voices.delete(o);o.disconnect();g.disconnect()}})
+}
+const keys=[...document.querySelectorAll('[data-note]')];
+keys.forEach(k=>k.addEventListener('click',async()=>{try{const ctx=getAudio();await ctx.resume();pianoTone(Number(k.dataset.note),ctx.currentTime);k.classList.add('active');setTimeout(()=>k.classList.remove('active'),220)}catch(e){toast('Səs açıla bilmədi. Yenidən toxun.')}}));
+let songPlaying=false,songStarting=false,songTimers=[];
+function stopSong(){songTimers.forEach(clearTimeout);songTimers=[];voices.forEach(o=>{try{o.stop()}catch(e){}});keys.forEach(k=>k.classList.remove('active'));songPlaying=false;$('#melody').textContent='♫ Lovers Rock çal';$('#pianoStatus').textContent='Lovers Rock · qısa piano aranjimanı.';$('#melody').setAttribute('aria-pressed','false')}
+// Short melodic phrase, adapted from Piano Letter Notes' Lovers Rock transcription.
+// Uppercase D/A indicate D-sharp/A-sharp; lowercase letters are natural notes.
+const phrase=['g-g-g-f---D----------------','----------------------g-g-','g-A---g-------g-g-g-g-gg--','f-------------f-f-f-g-f-D-'];
+const pitch={g:79,f:77,D:75,A:82};const tick=60/105/4;
+$('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPlaying){stopSong();return}songStarting=true;try{const ctx=getAudio();await ctx.resume();songPlaying=true;$('#melody').textContent='■ Dayandır';$('#melody').setAttribute('aria-pressed','true');$('#pianoStatus').textContent='Lovers Rock pianoda səslənir ♫';const start=ctx.currentTime+.06;
+ const melody=phrase.join('');
+ for(let i=0;i<melody.length;i++){const n=pitch[melody[i]];if(!n)continue;let next=i+1;while(next<melody.length&&!pitch[melody[next]])next++;pianoTone(440*2**((n-69)/12),start+i*tick,Math.min(1.2,Math.max(.18,(next-i)*tick*.9)),.13);const key=keys.find(k=>Number(k.dataset.midi)===n-12);if(key){songTimers.push(setTimeout(()=>key.classList.add('active'),60+i*tick*1000));songTimers.push(setTimeout(()=>key.classList.remove('active'),60+i*tick*1000+130))}}
+ // Soft accompaniment beneath the melodic phrase.
+ const chords=[[51,55,58],[51,55,58],[53,56,60],[53,56,60]];
+ chords.forEach((chord,bar)=>{for(let beat=0;beat<4;beat++){const time=start+(bar*26+beat*6)*tick;chord.forEach((n,j)=>pianoTone(440*2**((n-69)/12),time+j*.025,.9,.035))}});
+ songTimers.push(setTimeout(stopSong,melody.length*tick*1000+1300));
+}catch(e){stopSong();toast('Səs açıla bilmədi. Düyməyə yenidən toxun.')}finally{songStarting=false}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&songPlaying)stopSong()});
 $('#giveFlowers').addEventListener('click',()=>{$('#bouquet').classList.add('open');$('#giveFlowers').setAttribute('aria-expanded','true');$('#giveFlowers').textContent='Buket artıq sənindir ♡';$('#flowerNote').textContent='Al, bu çiçəklər sənə. Ümid edirəm üzünü güldürdü ♡';burst()});
 
 function burst(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;for(let i=0;i<28;i++){const el=document.createElement('i');el.className='confetti';el.style.cssText=`left:50%;top:55%;background:${['#ff8db8','#ffe58b','#b8a0e8'][i%3]};--dx:${Math.random()*500-250}px;--dy:${Math.random()*500-100}px;`;document.body.append(el);setTimeout(()=>el.remove(),1600)}}
@@ -52,5 +72,6 @@ function visit(){
 scheduleVisit(4500);
 $('#dismiss').onclick=()=>{closed=true;clearTimeout(visitTimer);clearTimeout(hideTimer);visitor.classList.remove('show')};
 if('IntersectionObserver'in window){const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}}),{threshold:.1});document.querySelectorAll('.section-heading,.piano-card,.letter-art').forEach(e=>{e.classList.add('reveal');obs.observe(e)})}
+
 
 
