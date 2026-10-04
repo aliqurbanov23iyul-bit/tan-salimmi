@@ -11,7 +11,7 @@ function lightKey(n,delay,duration){const key=keys.find(k=>Number(k.dataset.midi
 keys.forEach(k=>k.addEventListener('click',async()=>{try{const ctx=getAudio();await ctx.resume();await loadPiano();pianoTone(Number(k.dataset.midi),ctx.currentTime,.55,.65);k.classList.add('active');setTimeout(()=>k.classList.remove('active'),220)}catch(e){toast('Piano səsi açıla bilmədi. Yenidən toxun.')}}));
 let songPlaying=false,songStarting=false,songTimers=[],scheduler,animation,playbackStart=0,nextEvent=0;
 function stopSong(finished=false){clearInterval(scheduler);cancelAnimationFrame(animation);songTimers.forEach(clearTimeout);songTimers=[];voices.forEach(o=>{try{o.stop()}catch(e){}});keys.forEach(k=>k.classList.remove('active'));songPlaying=false;$('#melody').textContent='♫ Valse çal';$('#melody').setAttribute('aria-pressed','false');$('#songProgress').style.width=finished?'100%':'0%';$('#pianoStatus').textContent=finished?'Valse bitdi ♡ İstəsən yenidən dinlə.':'Evgeny Grinko — Valse · Sevdiyim piano parçalarından biri.'}
-$('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPlaying){stopSong();return}songStarting=true;$('#melody').textContent='Piano hazırlanır…';try{const ctx=getAudio();await ctx.resume();await loadPiano();if(document.hidden){stopSong();return}songPlaying=true;nextEvent=0;playbackStart=ctx.currentTime+.1;const score=window.ALI_VALSE,beat=60/score.bpm,total=score.beats*beat;$('#melody').textContent='■ Dayandır';$('#melody').setAttribute('aria-pressed','true');
+$('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPlaying){stopSong();return}songStarting=true;$('#melody').textContent='Piano hazırlanır…';try{const ctx=getAudio();await ctx.resume();await loadPiano();if(document.hidden){stopSong();return}if(!$('#hatunAudio').paused)$('#hatunAudio').pause();songPlaying=true;nextEvent=0;playbackStart=ctx.currentTime+.1;const score=window.ALI_VALSE,beat=60/score.bpm,total=score.beats*beat;$('#melody').textContent='■ Dayandır';$('#melody').setAttribute('aria-pressed','true');
  function schedule(){while(nextEvent<score.events.length){const [t,n,d,v]=score.events[nextEvent],at=playbackStart+t*beat;if(at>ctx.currentTime+.3)break;pianoTone(n,at,d*beat*.95,v);lightKey(n,(at-ctx.currentTime)*1000,Math.min(d*beat,.5));nextEvent++}}
  schedule();scheduler=setInterval(schedule,80);
  function progress(){if(!songPlaying)return;const elapsed=Math.max(0,ctx.currentTime-playbackStart);$('#songProgress').style.width=Math.min(100,elapsed/total*100)+'%';const fmt=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0');$('#pianoStatus').textContent='Valse · '+fmt(elapsed)+' / '+fmt(total)+' · Sevdiyim piano parçalarından biri';if(elapsed>=total+.8){stopSong(true);return}animation=requestAnimationFrame(progress)}progress();
@@ -31,7 +31,7 @@ const messages=[
  'Miyav! Məncə Əli ilə bir salamlaşmağa dəyər ♡',
  'Piano çalır, yemək bişirir… Mən sadəcə qabımın dolmasını gözləyirəm.',
  'Bu qədər kod yazıb. Sən də bir “salam” yazsan, layihə tamamdır!',
- '2Pac, meyxana, piano… Bu playlistdə sənə də yer tapılar ♫',
+ 'Duman, Valse, Hatun… Bu playlistdə sənə də yer tapılar ♫',
  'Kartların arxasında bir az daha Əli var. Pəncəmlə yoxladım!',
  'İlk söhbət üçün sevdiyin mahnını soruş. Mənimki miyav remixidir.',
  'Məncə ən vacib sual: Əli nə bişirəcək, biz nə yeyəcəyik?',
@@ -69,3 +69,20 @@ if('IntersectionObserver'in window){const obs=new IntersectionObserver(es=>es.fo
 
 
 
+
+
+// Hatun: uploaded audio, with a half-visible spinning record.
+const hatunAudio=$('#hatunAudio'),hatunButton=$('#hatunPlay'),hatunCard=$('#hatunCard'),hatunSeek=$('#hatunSeek');
+let hatunPending=false;
+const formatTrackTime=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0');
+function syncHatun(){const playing=!hatunAudio.paused&&!hatunAudio.ended;hatunCard.classList.toggle('is-playing',playing);hatunButton.setAttribute('aria-pressed',String(playing));hatunButton.textContent=playing?'Ⅱ Fasilə':'▶ Dinlə'}
+hatunButton.addEventListener('click',async()=>{if(hatunPending)return;if(!hatunAudio.paused){hatunAudio.pause();return}hatunPending=true;hatunButton.textContent='Yüklənir…';$('#hatunStatus').textContent='';try{if(songPlaying)stopSong();if(hatunAudio.ended)hatunAudio.currentTime=0;await hatunAudio.play()}catch(e){$('#hatunStatus').textContent='Musiqi açıla bilmədi. Yenidən Dinlə düyməsinə bas.'}finally{hatunPending=false;syncHatun()}});
+hatunAudio.addEventListener('play',()=>{if(songPlaying)stopSong();syncHatun()});
+hatunAudio.addEventListener('pause',syncHatun);
+hatunAudio.addEventListener('ended',()=>{syncHatun();$('#hatunStatus').textContent='Bitdi ♡ İstəsən yenidən dinlə.'});
+hatunAudio.addEventListener('error',()=>{syncHatun();$('#hatunStatus').textContent='Musiqi faylı yüklənmədi. Yenidən cəhd et.'});
+hatunAudio.addEventListener('loadedmetadata',()=>{if(Number.isFinite(hatunAudio.duration)){hatunSeek.max=hatunAudio.duration;hatunSeek.disabled=false;$('.track-clock span:last-child').textContent=formatTrackTime(hatunAudio.duration)}});
+hatunAudio.addEventListener('timeupdate',()=>{hatunSeek.value=hatunAudio.currentTime;$('#hatunTime').textContent=formatTrackTime(hatunAudio.currentTime)});
+hatunSeek.addEventListener('input',()=>{hatunAudio.currentTime=Number(hatunSeek.value)});
+$('#melody').addEventListener('click',()=>{if(!hatunAudio.paused)hatunAudio.pause()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)hatunAudio.pause()});
