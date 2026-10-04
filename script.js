@@ -12,5 +12,42 @@ function summary(){return 'Salam Əli! Saytındakı cavablarım:\n'+questions.ma
 function finish(){$('#question').textContent=picks[3]==='Hələ yox'?'Səmimi cavabın üçün sağ ol ♡':'Onda bir “salam”la başlayaq ♡';$('#answers').replaceChildren();$('#progress').style.width='100%';const r=$('#result');r.hidden=false;r.replaceChildren();const p=document.createElement('p');p.textContent=picks[3]==='Hələ yox'?'Heç bir problem yoxdur. Ümid edirəm bu balaca dünya gününə bir az rəng qatdı.':'Cavablarını kopyalayıb Instagram-da mənə göndərə bilərsən. Söhbətin davamını birlikdə yazaq.';r.append(p);picks.forEach((t,i)=>{const line=document.createElement('p');line.textContent=`${i+1}. ${t}`;r.append(line)});const copy=document.createElement('button');copy.className='button';copy.textContent='Cavabları kopyala ↗';copy.onclick=async()=>{try{await navigator.clipboard.writeText(summary());toast('Kopyalandı! İstəsən mənə göndər ♡')}catch(e){const a=document.createElement('textarea');a.value=summary();r.append(a);a.select();toast('Mətni seçib kopyalaya bilərsən.')}};const retry=document.createElement('button');retry.className='button';retry.textContent='Yenidən ↶';retry.onclick=()=>{idx=0;picks=[];r.hidden=true;render()};r.append(copy,retry);if(picks[3]!=='Hələ yox')burst()}
 render();
 for(const platform of ['instagram','tiktok']){const a=$('#'+platform);const username=(window.ALI_SOCIALS?.[platform]||'').trim().replace(/^@/,'');if(username){a.href=platform==='instagram'?`https://www.instagram.com/${encodeURIComponent(username)}/`:`https://www.tiktok.com/@${encodeURIComponent(username)}`;a.target='_blank';a.rel='noopener noreferrer'}else a.onclick=e=>{e.preventDefault();toast('Əli bu profilin linkini hələ əlavə etməyib ♡')}}
-const messages=['Məncə bu uşaqla tanış ol. Amma qərar sənindir ♡','Kod yazır, piano çalır… Mətbəxdə də bonus bacarığı var!','Kartların arxasına baxdın? Orada bir az daha Əli var.','Bir “salam” böyük bir söhbətin başlanğıcı ola bilər ♡'];let m=0,closed=false;const visitor=$('#visitor');function visit(){if(closed||document.hidden)return;$('#visitorMessage').textContent=messages[m%messages.length];visitor.classList.toggle('left',m%2===1);visitor.classList.add('show');m++;setTimeout(()=>visitor.classList.remove('show'),6500)}setTimeout(visit,5500);setInterval(visit,23000);$('#dismiss').onclick=()=>{closed=true;visitor.classList.remove('show')};
+const messages=[
+ 'Miyav! Məncə Əli ilə bir salamlaşmağa dəyər ♡',
+ 'Piano çalır, yemək bişirir… Mən sadəcə qabımın dolmasını gözləyirəm.',
+ 'Bu qədər kod yazıb. Sən də bir “salam” yazsan, layihə tamamdır!',
+ '2Pac, meyxana, piano… Bu playlistdə sənə də yer tapılar ♫',
+ 'Kartların arxasında bir az daha Əli var. Pəncəmlə yoxladım!',
+ 'İlk söhbət üçün sevdiyin mahnını soruş. Mənimki miyav remixidir.',
+ 'Məncə ən vacib sual: Əli nə bişirəcək, biz nə yeyəcəyik?',
+ 'Bu saytı sənin üçün hazırlayıb. Mən isə səhifəni nəzarətdə saxlayıram.',
+ 'Qərar sənindir. Mən sadəcə şirin görünməyə gəlmişəm ♡',
+ 'Zaqataladan Bakıya, sonra sənin ekranına… Maraqlı marşrutdur!',
+ 'Bir düyməyə toxun, piano səslənsin. Mən qulaq asıram ♫',
+ 'Sən danış, Əli dinləsin. Mən də arada miyav deyərəm.'
+];
+const positions=['bottom-left','bottom-right','mid-left','mid-right','top-left','top-right'];
+const cats=['assets/cat-peek.svg','assets/cat-sleep.svg','assets/cat-heart.svg'];
+let lastMessage=-1,lastPosition=-1,lastCat=-1,closed=false,visitTimer,hideTimer;
+const visitor=$('#visitor');
+function differentIndex(length,last){let n;do{n=Math.floor(Math.random()*length)}while(length>1&&n===last);return n}
+function scheduleVisit(delay){clearTimeout(visitTimer);if(!closed)visitTimer=setTimeout(visit,delay)}
+function visit(){
+ if(closed)return;
+ if(document.hidden){scheduleVisit(3000);return}
+ // Keep the quiz and social buttons clear while the visitor is interacting.
+ if(document.activeElement?.closest('.quiz,.socials')){scheduleVisit(4000);return}
+ lastMessage=differentIndex(messages.length,lastMessage);
+ lastPosition=differentIndex(positions.length,lastPosition);
+ lastCat=differentIndex(cats.length,lastCat);
+ $('#visitorMessage').textContent=messages[lastMessage];
+ $('#visitorCat').src=cats[lastCat];
+ visitor.dataset.position=positions[lastPosition];
+ visitor.classList.add('show');
+ clearTimeout(hideTimer);
+ hideTimer=setTimeout(()=>{visitor.classList.remove('show');scheduleVisit(11000+Math.random()*7000)},6500);
+}
+scheduleVisit(4500);
+$('#dismiss').onclick=()=>{closed=true;clearTimeout(visitTimer);clearTimeout(hideTimer);visitor.classList.remove('show')};
 if('IntersectionObserver'in window){const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}}),{threshold:.1});document.querySelectorAll('.section-heading,.piano-card,.letter-art').forEach(e=>{e.classList.add('reveal');obs.observe(e)})}
+
