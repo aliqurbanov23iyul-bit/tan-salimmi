@@ -1,0 +1,7 @@
+Valse — Evgeny Grinko. Browser piano arrangement; not the original recording.
+Notation reference: Diba Fazelnia, https://pianodiba.com/wp-content/uploads/vals-grinko-1.pdf
+Opening theme and variation adapted for this site; repetitions and octave voicing edited.
+Samples: FluidR3 GM acoustic grand piano, rendered by gleitz/midi-js-soundfonts.
+https://github.com/gleitz/midi-js-soundfonts
+FluidR3 SoundFont by Frank Wen and contributors. CC BY 3.0: https://creativecommons.org/licenses/by/3.0/us/
+Samples encoded unchanged; pitch adjusted during playback.

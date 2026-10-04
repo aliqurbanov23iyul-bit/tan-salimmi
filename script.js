@@ -2,27 +2,20 @@
 const $=s=>document.querySelector(s);let toastTimer;
 function toast(t){$('#toast').textContent=t;$('#toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),3500)}
 document.querySelectorAll('.fact').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('flipped');b.setAttribute('aria-expanded',b.classList.contains('flipped'))}));
-let audio;const voices=new Set();
+let audio;const voices=new Set(),pianoBuffers=new Map();let samplesPromise;
 function getAudio(){audio??=new (window.AudioContext||window.webkitAudioContext)();return audio}
-function pianoTone(f,when,duration=.8,volume=.15){const ctx=getAudio();const gain=ctx.createGain();gain.gain.setValueAtTime(.0001,when);gain.gain.exponentialRampToValueAtTime(volume,when+.008);gain.gain.exponentialRampToValueAtTime(volume*.25,when+.18);gain.gain.exponentialRampToValueAtTime(.0001,when+duration);gain.connect(ctx.destination);
- [1,2,3].forEach((harmonic,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=f*harmonic;g.gain.value=[1,.24,.07][i];o.connect(g);g.connect(gain);o.start(when);o.stop(when+duration+.02);voices.add(o);o.onended=()=>{voices.delete(o);o.disconnect();g.disconnect()}})
-}
+async function loadPiano(){if(pianoBuffers.size)return;if(!samplesPromise)samplesPromise=(async()=>{const ctx=getAudio();await Promise.all(Object.entries(window.ALI_PIANO_SAMPLES).map(async([n,uri])=>{const bytes=Uint8Array.from(atob(uri.split(',')[1]),c=>c.charCodeAt(0));pianoBuffers.set(Number(n),await ctx.decodeAudioData(bytes.buffer))}))})().catch(e=>{samplesPromise=null;throw e});return samplesPromise}
+function pianoTone(n,when,duration=.8,volume=.6){const ctx=getAudio();const anchor=[...pianoBuffers.keys()].reduce((a,b)=>Math.abs(b-n)<Math.abs(a-n)?b:a);const source=ctx.createBufferSource();source.buffer=pianoBuffers.get(anchor);source.playbackRate.value=2**((n-anchor)/12);const gain=ctx.createGain();gain.gain.setValueAtTime(volume,when);gain.gain.setTargetAtTime(.0001,when+Math.max(.08,duration),.12);source.connect(gain);gain.connect(ctx.destination);source.start(when);source.stop(when+duration+.8);voices.add(source);source.onended=()=>{voices.delete(source);source.disconnect();gain.disconnect()}}
 const keys=[...document.querySelectorAll('[data-note]')];
-keys.forEach(k=>k.addEventListener('click',async()=>{try{const ctx=getAudio();await ctx.resume();pianoTone(Number(k.dataset.note),ctx.currentTime);k.classList.add('active');setTimeout(()=>k.classList.remove('active'),220)}catch(e){toast('Səs açıla bilmədi. Yenidən toxun.')}}));
-let songPlaying=false,songStarting=false,songTimers=[];
-function stopSong(){songTimers.forEach(clearTimeout);songTimers=[];voices.forEach(o=>{try{o.stop()}catch(e){}});keys.forEach(k=>k.classList.remove('active'));songPlaying=false;$('#melody').textContent='♫ Lovers Rock çal';$('#pianoStatus').textContent='Lovers Rock · qısa piano aranjimanı.';$('#melody').setAttribute('aria-pressed','false')}
-// Short melodic phrase, adapted from Piano Letter Notes' Lovers Rock transcription.
-// Uppercase D/A indicate D-sharp/A-sharp; lowercase letters are natural notes.
-const phrase=['g-g-g-f---D----------------','----------------------g-g-','g-A---g-------g-g-g-g-gg--','f-------------f-f-f-g-f-D-'];
-const pitch={g:79,f:77,D:75,A:82};const tick=60/105/4;
-$('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPlaying){stopSong();return}songStarting=true;try{const ctx=getAudio();await ctx.resume();songPlaying=true;$('#melody').textContent='■ Dayandır';$('#melody').setAttribute('aria-pressed','true');$('#pianoStatus').textContent='Lovers Rock pianoda səslənir ♫';const start=ctx.currentTime+.06;
- const melody=phrase.join('');
- for(let i=0;i<melody.length;i++){const n=pitch[melody[i]];if(!n)continue;let next=i+1;while(next<melody.length&&!pitch[melody[next]])next++;pianoTone(440*2**((n-69)/12),start+i*tick,Math.min(1.2,Math.max(.18,(next-i)*tick*.9)),.13);const key=keys.find(k=>Number(k.dataset.midi)===n-12);if(key){songTimers.push(setTimeout(()=>key.classList.add('active'),60+i*tick*1000));songTimers.push(setTimeout(()=>key.classList.remove('active'),60+i*tick*1000+130))}}
- // Soft accompaniment beneath the melodic phrase.
- const chords=[[51,55,58],[51,55,58],[53,56,60],[53,56,60]];
- chords.forEach((chord,bar)=>{for(let beat=0;beat<4;beat++){const time=start+(bar*26+beat*6)*tick;chord.forEach((n,j)=>pianoTone(440*2**((n-69)/12),time+j*.025,.9,.035))}});
- songTimers.push(setTimeout(stopSong,melody.length*tick*1000+1300));
-}catch(e){stopSong();toast('Səs açıla bilmədi. Düyməyə yenidən toxun.')}finally{songStarting=false}});
+function lightKey(n,delay,duration){const key=keys.find(k=>Number(k.dataset.midi)%12===n%12);if(!key)return;songTimers.push(setTimeout(()=>{key.classList.add('active');songTimers.push(setTimeout(()=>key.classList.remove('active'),Math.max(120,duration*1000)))},Math.max(0,delay)))}
+keys.forEach(k=>k.addEventListener('click',async()=>{try{const ctx=getAudio();await ctx.resume();await loadPiano();pianoTone(Number(k.dataset.midi),ctx.currentTime,.55,.65);k.classList.add('active');setTimeout(()=>k.classList.remove('active'),220)}catch(e){toast('Piano səsi açıla bilmədi. Yenidən toxun.')}}));
+let songPlaying=false,songStarting=false,songTimers=[],scheduler,animation,playbackStart=0,nextEvent=0;
+function stopSong(finished=false){clearInterval(scheduler);cancelAnimationFrame(animation);songTimers.forEach(clearTimeout);songTimers=[];voices.forEach(o=>{try{o.stop()}catch(e){}});keys.forEach(k=>k.classList.remove('active'));songPlaying=false;$('#melody').textContent='♫ Valse çal';$('#melody').setAttribute('aria-pressed','false');$('#songProgress').style.width=finished?'100%':'0%';$('#pianoStatus').textContent=finished?'Valse bitdi ♡ İstəsən yenidən dinlə.':'Evgeny Grinko — Valse · Sevdiyim piano parçalarından biri.'}
+$('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPlaying){stopSong();return}songStarting=true;$('#melody').textContent='Piano hazırlanır…';try{const ctx=getAudio();await ctx.resume();await loadPiano();if(document.hidden){stopSong();return}songPlaying=true;nextEvent=0;playbackStart=ctx.currentTime+.1;const score=window.ALI_VALSE,beat=60/score.bpm,total=score.beats*beat;$('#melody').textContent='■ Dayandır';$('#melody').setAttribute('aria-pressed','true');
+ function schedule(){while(nextEvent<score.events.length){const [t,n,d,v]=score.events[nextEvent],at=playbackStart+t*beat;if(at>ctx.currentTime+.3)break;pianoTone(n,at,d*beat*.95,v);lightKey(n,(at-ctx.currentTime)*1000,Math.min(d*beat,.5));nextEvent++}}
+ schedule();scheduler=setInterval(schedule,80);
+ function progress(){if(!songPlaying)return;const elapsed=Math.max(0,ctx.currentTime-playbackStart);$('#songProgress').style.width=Math.min(100,elapsed/total*100)+'%';const fmt=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0');$('#pianoStatus').textContent='Valse · '+fmt(elapsed)+' / '+fmt(total)+' · Sevdiyim piano parçalarından biri';if(elapsed>=total+.8){stopSong(true);return}animation=requestAnimationFrame(progress)}progress();
+}catch(e){stopSong();toast('Piano səsi açıla bilmədi. Yenidən cəhd et.')}finally{songStarting=false}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&songPlaying)stopSong()});
 $('#giveFlowers').addEventListener('click',()=>{$('#bouquet').classList.add('open');$('#giveFlowers').setAttribute('aria-expanded','true');$('#giveFlowers').textContent='Buket artıq sənindir ♡';$('#flowerNote').textContent='Al, bu çiçəklər sənə. Ümid edirəm üzünü güldürdü ♡';burst()});
 
@@ -72,6 +65,7 @@ function visit(){
 scheduleVisit(4500);
 $('#dismiss').onclick=()=>{closed=true;clearTimeout(visitTimer);clearTimeout(hideTimer);visitor.classList.remove('show')};
 if('IntersectionObserver'in window){const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}}),{threshold:.1});document.querySelectorAll('.section-heading,.piano-card,.letter-art').forEach(e=>{e.classList.add('reveal');obs.observe(e)})}
+
 
 
 
