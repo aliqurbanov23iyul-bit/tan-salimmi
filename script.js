@@ -17,7 +17,7 @@ $('#melody').addEventListener('click',async()=>{if(songStarting)return;if(songPl
  function progress(){if(!songPlaying)return;const elapsed=Math.max(0,ctx.currentTime-playbackStart);$('#songProgress').style.width=Math.min(100,elapsed/total*100)+'%';const fmt=x=>Math.floor(x/60)+':'+String(Math.floor(x%60)).padStart(2,'0');$('#pianoStatus').textContent='Valse · '+fmt(elapsed)+' / '+fmt(total)+' · Sevdiyim piano parçalarından biri';if(elapsed>=total+.8){stopSong(true);return}animation=requestAnimationFrame(progress)}progress();
 }catch(e){stopSong();toast('Piano səsi açıla bilmədi. Yenidən cəhd et.')}finally{songStarting=false}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&songPlaying)stopSong()});
-$('#giveFlowers').addEventListener('click',()=>{$('#bouquet').classList.add('open');$('#giveFlowers').setAttribute('aria-expanded','true');$('#giveFlowers').textContent='Buket artıq sənindir ♡';$('#flowerNote').textContent='Al, bu çiçəklər sənə. Ümid edirəm üzünü güldürdü ♡';burst()});
+$('#giveFlowers').addEventListener('click',()=>{$('#bouquet').classList.add('open');$('#giveFlowers').setAttribute('aria-expanded','true');$('#giveFlowers').textContent='Buket artıq sənindir ♡';$('#flowerNote').textContent='Bu çiçəklər sizin üçün. Ümid edirəm sizi gülümsədə bildim ♡';burst()});
 
 function burst(){if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;for(let i=0;i<28;i++){const el=document.createElement('i');el.className='confetti';el.style.cssText=`left:50%;top:55%;background:${['#ff8db8','#ffe58b','#b8a0e8'][i%3]};--dx:${Math.random()*500-250}px;--dy:${Math.random()*500-100}px;`;document.body.append(el);setTimeout(()=>el.remove(),1600)}}
 $('#gift').addEventListener('click',()=>{const open=$('#letter').hidden;$('#letter').hidden=!open;$('#gift').setAttribute('aria-expanded',open);if(open)burst()});
@@ -28,6 +28,10 @@ function finish(){$('#question').textContent=picks[3]==='Hələ yox'?'Səmimi ca
 render();
 for(const platform of ['instagram','tiktok']){const a=$('#'+platform);const username=(window.ALI_SOCIALS?.[platform]||'').trim().replace(/^@/,'');if(username){a.href=platform==='instagram'?`https://www.instagram.com/${encodeURIComponent(username)}/`:`https://www.tiktok.com/@${encodeURIComponent(username)}`;a.target='_blank';a.rel='noopener noreferrer'}else a.onclick=e=>{e.preventDefault();toast('Əli bu profilin linkini hələ əlavə etməyib ♡')}}
 const messages=[
+ 'Əli deyir: “Sizdən çox xoşum gəldi.” Mən də dedim ki, bunu gizlətmə ♡',
+ 'Bu saytın ən səmimi cümləsi: “Sizi daha yaxından tanımaq istərdim.”',
+ 'Məncə bu qədər sözün arasında bir az həyəcan da var. İlk salam asan deyil axı ♡',
+ 'Əli bir sayt hazırladı, mən isə cəsarət verdim: get, xoşlandığını de!',
  'Miyav! Məncə Əli ilə bir salamlaşmağa dəyər ♡',
  'Piano çalır, yemək bişirir… Mən sadəcə qabımın dolmasını gözləyirəm.',
  'Bu qədər kod yazıb. Sən də bir “salam” yazsan, layihə tamamdır!',
